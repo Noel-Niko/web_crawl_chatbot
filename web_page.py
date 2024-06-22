@@ -2,23 +2,25 @@ import streamlit as st
 import os
 import pandas as pd
 import pickle
-import openai
+from openai import OpenAI
+
+client = OpenAI()
 from typing import List, Optional
 
-from langchain_core.prompts import ChatPromptTemplate
+
 from scipy import spatial
 
 # from openai import OpenAI
 import logging
 from langchain_openai import ChatOpenAI
 from langchain_core.documents import Document
+from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 chatOpenAiKey = os.getenv('CHAT_OPENAI_KEY')
-prompt = ChatPromptTemplate.from_template(""""You are a ChatBot eager to encourage people to visits this city you are 
-very excited about.":
+prompt = ChatPromptTemplate.from_template(""""
 
         <context>
         {context}
@@ -51,8 +53,11 @@ def create_context(question, df, max_len=1800, size="ada"):
     logging.info("Creating context for the question.")
     try:
         # Get the embeddings for the question
-        q_embeddings = openai.Embedding.create(input=question, engine='text-embedding-ada-002')['data'][0][
-            'embedding']
+        response = client.embeddings.create(model="text-embedding-ada-002", input=question)
+        q_embeddings = response.data[0].embedding
+
+        # q_embeddings = openai.Embedding.create(input=question, engine='text-embedding-ada-002')['data'][0][
+        #     'embedding']
         logging.info("Obtained embeddings for the question.")
     except Exception as e:
         logging.error(f"Error obtaining embeddings for the question: {e}")
@@ -102,10 +107,15 @@ class WebPage:
         )
         self.current_query = None
 
+
     def answer_question(self, df, model="gpt-3.5-turbo", question="What is there to do here?", max_len=1800,
                         size="ada",
                         debug=False, max_tokens=1500, stop_sequence=None):
         logging.info(f"Answering question: {question}")
+        # Initialize conversation history if it doesn't exist
+        if "conversation_history" not in st.session_state:
+            st.session_state.conversation_history = []
+
         conversation_context = " ".join(
             [f"Question: {q}, Answer: {a}" for q, a in st.session_state.conversation_history] + [
                 f"Question: {question}"])
@@ -144,7 +154,7 @@ class WebPage:
             logging.info(f"Button clicked with question: {question}")
             with st.spinner('Generating answer...'):
                 try:
-                    context = create_context(question, df)
+                    context = create_context(question, df=df)
                     if context:
                         logging.info(f"Generated context: {context}")
                         answer = self.answer_question(df, question=question)
