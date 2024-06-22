@@ -1,0 +1,52 @@
+To run your Streamlit application in debug mode and stop at break points
+### Step-by-Step Guide
+
+1. **Open Your Project in PyCharm**:
+   - Open PyCharm and navigate to your project directory.
+
+2. **Set Up the Debug Configuration**:
+   - Go to `Run` -> `Edit Configurations`.
+   - Click on the `+` icon to add a new configuration and select `Python`.
+
+3. **Configure the Debug Configuration**:
+   - Name the configuration (e.g., "Streamlit Debug").
+   - For the `Script path`, enter the path to the Streamlit executable. You can find it by running `which streamlit` in your terminal (e.g., `/usr/local/bin/streamlit` or `/Users/noel_niko/opt/anaconda3/bin/streamlit`).
+   - For the `Parameters`, add the command to run your script with the desired arguments: `run /Users/noel_niko/PycharmProjects/python_web_crawler/web_page.py`.
+   - Set the `Working directory` to the directory containing your `web_page.py` script.
+   - Ensure the correct Python interpreter is selected under `Python Interpreter`.
+
+4. **Set Breakpoints in Your Code**:
+   - Open your `web_page.py` file in PyCharm.
+   - Click in the gutter (left margin) next to the line numbers where you want to set breakpoints.
+
+5. **Run in Debug Mode**:
+   - Select the debug configuration you created from the dropdown in the top-right corner of PyCharm.
+   - Click the debug icon (a green bug) to start debugging.
+
+### Example Configuration in PyCharm
+
+Here’s an example of how your configuration might look:
+
+- **Name**: Streamlit Debug
+- **Script path**: `/usr/local/bin/streamlit` (or the path to your Streamlit executable)
+- **Parameters**: `run /Users/noel_niko/PycharmProjects/python_web_crawler/web_page.py`
+- **Working directory**: `/Users/noel_niko/PycharmProjects/python_web_crawler`
+- **Python interpreter**: (Your project's Python interpreter)
+
+### Debugging
+
+When you start the debug session:
+- PyCharm will open a console window showing the output of the Streamlit app.
+- The app will run in the browser as usual, but execution will pause at any breakpoints you’ve set.
+- You can inspect variables, step through code, and use all the usual debugging features of PyCharm.
+
+### Streamlit-Specific Debugging
+
+For Streamlit-specific debugging, you might want to use `st.write` or `st.text` for quick and temporary debug outputs. However, these won’t be as powerful as using PyCharm’s debugger for inspecting the state of your application and stepping through the code.
+
+### Summary
+
+1. **Set up a Python debug configuration in PyCharm**.
+2. **Specify the path to the Streamlit executable and your script**.
+3. **Set breakpoints in your code**.
+4. **Run the configuration in debug mode**.
