@@ -1,26 +1,32 @@
+"""
+To run from the terminal once pickle file created:
+export OPENAI_API_KEY={Your Key Here}
+streamlit run {Absolute path to web_page.py}
+"""
+
+
+import time
+from datetime import datetime
 import streamlit as st
 import os
 import pandas as pd
 import pickle
-from openai import OpenAI
-
-client = OpenAI()
-from typing import List, Optional
-
-
-from scipy import spatial
-
-# from openai import OpenAI
 import logging
+from openai import OpenAI
+from typing import List, Optional
+from scipy import spatial
 from langchain_openai import ChatOpenAI
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 
+client = OpenAI()
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 chatOpenAiKey = os.getenv('CHAT_OPENAI_KEY')
-prompt = ChatPromptTemplate.from_template(""""
+prompt = ChatPromptTemplate.from_template("""Answer the following question based only on the provided context, but answer
+ in a friendly but professional way to encourage the reader to want to visit:
 
         <context>
         {context}
@@ -55,9 +61,6 @@ def create_context(question, df, max_len=1800, size="ada"):
         # Get the embeddings for the question
         response = client.embeddings.create(model="text-embedding-ada-002", input=question)
         q_embeddings = response.data[0].embedding
-
-        # q_embeddings = openai.Embedding.create(input=question, engine='text-embedding-ada-002')['data'][0][
-        #     'embedding']
         logging.info("Obtained embeddings for the question.")
     except Exception as e:
         logging.error(f"Error obtaining embeddings for the question: {e}")
@@ -92,10 +95,10 @@ def create_context(question, df, max_len=1800, size="ada"):
 
 class WebPage:
     def __init__(self):
-
+        # TODO: NOTE high setting for temperature produces more "creative" responses. Settings 0.0-1.0
         self.llm_connection = ChatOpenAI(
             model_name="gpt-3.5-turbo",
-            temperature=0,
+            temperature=1,
             api_key=chatOpenAiKey,
             streaming=True,
             openai_organization=None,
@@ -107,20 +110,22 @@ class WebPage:
         )
         self.current_query = None
 
-
     def answer_question(self, df, model="gpt-3.5-turbo", question="What is there to do here?", max_len=1800,
                         size="ada",
                         debug=False, max_tokens=1500, stop_sequence=None):
         logging.info(f"Answering question: {question}")
-        # Initialize conversation history if it doesn't exist
-        if "conversation_history" not in st.session_state:
-            st.session_state.conversation_history = []
 
         conversation_context = " ".join(
             [f"Question: {q}, Answer: {a}" for q, a in st.session_state.conversation_history] + [
                 f"Question: {question}"])
 
+        start_time = time.time()
         context = create_context(question, df, max_len=max_len, size=size)
+        end_time = time.time()
+        search_duration = end_time - start_time
+        with open('search_durations.txt', 'a') as file:
+            file.write(f"Search duration: {search_duration:.2f} seconds, Timestamp: {datetime.now()}\n")
+
         if context == "":
             logging.error("Context creation failed.")
             return "I couldn't generate context for the question."
@@ -131,8 +136,7 @@ class WebPage:
         context_document = Document(page_content=context)
         self.current_query = ""
         logging.info(
-            f"*****************************************    Asking LLM: {prompt} {question}. "
-            f"Here is the conversation history:  {conversation_context}")
+            f"*****************************************    Asking LLM: {prompt} {question}.")
         return document_chain.invoke({
             "input": f"{prompt} {question}. Here is the conversation history:  {conversation_context}",
             "context": [context_document]
@@ -148,9 +152,20 @@ class WebPage:
             logging.error(f"Error loading the DataFrame: {e}")
         st.title('Q&A App about Hartford Wisconsin')
 
+        if 'conversation_history' not in st.session_state:
+            st.session_state.conversation_history = []
+
+        # Display previous questions and answers
+        for question, answer in st.session_state.conversation_history:
+            st.write(f"**Question:** {question}")
+            st.write(f"**Answer:** {answer}")
+            st.write("---")
+
         question = st.text_input("Ask a question:")
 
-        if st.button('Get Answer'):
+        col1, col2 = st.columns(2)
+
+        if col1.button('Get Answer'):
             logging.info(f"Button clicked with question: {question}")
             with st.spinner('Generating answer...'):
                 try:
@@ -160,6 +175,8 @@ class WebPage:
                         answer = self.answer_question(df, question=question)
                         logging.info(f"Generated answer: {answer}")
                         st.write(answer)
+                        # Update the conversation history with the new question and answer
+                        st.session_state.conversation_history.append((question, answer))
                         logging.info("Displayed answer to the user.")
                     else:
                         st.write("Context creation failed.")
@@ -167,6 +184,9 @@ class WebPage:
                 except Exception as e:
                     logging.error(f"Error in generating answer: {e}")
                     st.write("There was an error generating the answer.")
+
+        if col2.button("Clear History"):
+            st.session_state.conversation_history = []
 
 
 web_page = WebPage()
